@@ -2,6 +2,7 @@ const buildingLogic = new BuildingLogic();
 
 let gameTime = parseInt(localStorage.getItem('gameTime')) || 0;
 let resources = {
+    level: 1,
     population: 10,
     food: 50,
     gold: 90,
@@ -22,7 +23,13 @@ function formatTime(seconds) {
 }
 
 function updateTimerDisplay() {
-    document.getElementById('timer').textContent = formatTime(gameTime);
+    const timerElement = document.getElementById('timer');
+
+    if(timerElement) {
+        timerElement.textContent = formatTime(gameTime);
+    } else {
+        console.error('Timer element not found!');
+    }
 }
 
 function gameTick() {
@@ -34,10 +41,16 @@ function gameTick() {
 }
 
 const timerInterval = setInterval(gameTick, 1000);
-window.addEventListener('beforeunload', () => { localStorage.setItem('gameTime', gameTime) });
+window.addEventListener('beforeunload', () => { localStorage.setItem('gameTime', gameTime); });
 
 function logAction(message) {
     const logEntries = document.getElementById('logEntries');
+
+    if(!logEntries) {
+        console.error('Log entries container not found!');
+        return;
+    }
+
     const logEntry = document.createElement('p');
     logEntry.textContent = message;
     logEntries.prepend(logEntry);
@@ -58,33 +71,53 @@ function getUpgradeRequirements(level) {
 function calculateProduction(buildingType) {
     let totalProduction = 0;
 
+    if(!resources.buildings[buildingType]) {
+        console.error(`Building type ${buildingType} not found in resources!`);
+        return totalProduction;
+    }
+
     for(let i = 1; i <= resources.buildings[buildingType].count; i++) {
         const level = resources.buildings[buildingType][`${buildingType}${i}Level`];
+
+        if(!level) {
+            console.warn(`Level for ${buildingType} ${i} is not defined.`);
+            continue;
+        }
+
         const baseProduction = buildingLogic.getProduction(buildingType, level);
         totalProduction += baseProduction;
     }
 
+    console.log(`Total production for ${buildingType}: ${totalProduction}`);
     return totalProduction;
 }
 
 function increaseResources() {
-    const farmProduction = calculateProduction('farms');
-    const mineProduction = calculateProduction('mines');
+    try {
+        const farmProduction = calculateProduction('farms');
+        const mineProduction = calculateProduction('mines');
 
-    resources.food += farmProduction;
-    resources.gold += mineProduction;
+        resources.food += farmProduction;
+        resources.gold += mineProduction;
 
-    logAction('Resources increased based on production rates!');
-    updateResources();
+        logAction(`Resources increased: Food: +${farmProduction}, Gold: +${mineProduction}`);
+        updateResources();
+    } catch(error) {
+        console.error('Error in increaseResources: ', error.message);
+    }
 }
 
 function updateResources() {
-    document.getElementById('population').textContent = resources.population;
-    document.getElementById('food').textContent = resources.food;
-    document.getElementById('gold').textContent = resources.gold;
-    document.getElementById('farms').textContent = resources.buildings.farms.count;
-    document.getElementById('mines').textContent = resources.buildings.mines.count;
-    document.getElementById('houses').textContent = resources.buildings.houses.count;
+    try {
+        document.getElementById('population').textContent = resources.population;
+        document.getElementById('food').textContent = resources.food;
+        document.getElementById('gold').textContent = resources.gold;
+        document.getElementById('farms').textContent = resources.buildings.farms.count;
+        document.getElementById('mines').textContent = resources.buildings.mines.count;
+        document.getElementById('houses').textContent = resources.buildings.houses.count;
+    } catch(err) {
+        console.error('Error in updateResources: ', err.message);
+    }
 }
 
 function buildFarm() {
